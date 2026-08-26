@@ -128,15 +128,18 @@ bash test-local.sh
 
 ### Remote Tests (Railway)
 
+Manual testing:
 ```bash
-# Requires websocat: brew install websocat
+# Requires websocat: brew install websocat (or uses install-ci-deps.sh)
 bash test-railway.sh
 ```
 
-**Automatic post-deploy validation:**
-- GitHub Actions automatically runs `validate-deployment.sh` and `test-railway.sh` after each Railway deployment
-- View results in: GitHub → Actions → "Post-Deploy Validation"
-- See [POST_DEPLOY_VALIDATION.md](POST_DEPLOY_VALIDATION.md) for setup details
+**Automatic Validation (Recommended)**
+- GitHub Actions automatically validates after each successful Railway deployment
+- Executes: `install-ci-deps.sh` → `validate-deployment.sh` → `test-railway.sh`
+- View results: GitHub → Actions → "Post-Deploy Validation"
+
+See [POST_DEPLOY_VALIDATION.md](POST_DEPLOY_VALIDATION.md) and [install-ci-deps.sh](install-ci-deps.sh) for details.
 
 ### Manual Testing
 
@@ -181,7 +184,24 @@ GitHub Actions workflows for:
 - **Lint** (lint.yml) - Code quality and security scanning
 - **Release** (release.yml) - Automated releases on git tags
 - **Deploy** (deploy.yml) - Automatic deployment to Railway
+- **Post-Deploy Validation** (post-deploy-validation.yml) - Automatic validation after successful deploy
 - **Auto-merge** (auto-merge-dependabot.yml) - Dependency updates
+
+### Post-Deploy Validation
+
+After each successful Railway deployment, GitHub Actions automatically:
+1. Waits 60 seconds for server startup
+2. Runs `validate-deployment.sh` (infrastructure checks)
+3. Runs `test-railway.sh` (MCP functional tests)
+4. Reports results in Actions tab
+
+View validation logs: GitHub → Actions → "Post-Deploy Validation"
+
+**Robust dependency installation:**
+- Script: `install-ci-deps.sh`
+- Installs: jq, websocat
+- Fallback chain: apt-get → cargo → precompiled binary
+- Handles CI environments reliably
 
 ## Documentation
 
