@@ -61,7 +61,18 @@ install_websocat() {
             echo "apt-cyg not found. Installing apt-cyg first..."
             curl -s https://raw.githubusercontent.com/transcode-open/apt-cyg/master/apt-cyg > apt-cyg
             chmod +x apt-cyg
-            mv apt-cyg /usr/local/bin/
+
+            # Try to move to standard locations
+            if mkdir -p /usr/local/bin 2>/dev/null && mv apt-cyg /usr/local/bin/; then
+                echo "apt-cyg installed to /usr/local/bin"
+            elif mv apt-cyg /usr/bin/; then
+                echo "apt-cyg installed to /usr/bin"
+            else
+                echo "ERROR: Could not install apt-cyg"
+                return 1
+            fi
+
+            # Install websocat via apt-cyg
             apt-cyg install websocat
             return $?
         fi
