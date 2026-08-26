@@ -1,1 +1,1 @@
-web: java -jar target/mcp-users-server-*.jar
+web: java -cp target/mcp-users-server-*.jar com.example.mcp.McpWebSocketServer ${PORT:-8080}

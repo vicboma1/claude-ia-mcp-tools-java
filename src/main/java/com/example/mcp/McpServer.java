@@ -68,7 +68,7 @@ public class McpServer {
         }
     }
 
-    private JsonObject handleRequest(JsonObject request) {
+    public JsonObject handleRequest(JsonObject request) {
         String method = request.has("method") ? request.get("method").getAsString() : null;
         int id = request.has("id") ? request.get("id").getAsInt() : 0;
 

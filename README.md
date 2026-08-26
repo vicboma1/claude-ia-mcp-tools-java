@@ -46,11 +46,24 @@ Or after building:
 java -cp target/mcp-users-server-1.0.0.jar com.example.mcp.McpServer
 ```
 
+Or native:
+
+```java
+java -jar target/mcp-users-server-*.jar
+```
+
 ## Run Tests
 
 ```bash
 mvn test
 ```
+
+Or after run
+
+```bash
+bash test-local.sh
+```
+
 
 ## MCP Configuration
 

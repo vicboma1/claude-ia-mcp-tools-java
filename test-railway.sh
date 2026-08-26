@@ -1,26 +1,29 @@
 #!/bin/bash
 
 # MCP Users Server - Railway Test Script
-# Tests all 5 tools of the MCP server running on Railway
+# Tests all 5 tools of the MCP server running on Railway via WebSocket
 
-set -e
-
-RAILWAY_URL="https://claude-ia-mcp-tools-java-staging.up.railway.app"
+RAILWAY_URL="wss://claude-ia-mcp-tools-java-staging.up.railway.app"
 
 echo "================================================"
-echo "MCP Users Server - Railway Test"
+echo "MCP Users Server - Railway WebSocket Test"
 echo "================================================"
 echo ""
 echo "Target: $RAILWAY_URL"
 echo ""
 
-# Verify curl is installed
-if ! command -v curl &> /dev/null; then
-    echo "ERROR: curl is not installed"
+# Check if websocat is installed
+if ! command -v websocat &> /dev/null; then
+    echo "ERROR: websocat is not installed"
+    echo ""
+    echo "Install websocat:"
+    echo "  macOS:  brew install websocat"
+    echo "  Linux:  cargo install websocat (requires Rust)"
+    echo "  Manual: https://github.com/vi/websocat/releases"
     exit 1
 fi
 
-# Function to send command via HTTP
+# Function to send command via WebSocket
 test_tool() {
     local name=$1
     local command=$2
@@ -32,10 +35,8 @@ test_tool() {
     echo "$command" | jq '.' 2>/dev/null || echo "$command"
     echo ""
 
-    # Send command to MCP server via HTTP POST
-    response=$(curl -s -X POST "$RAILWAY_URL" \
-        -H "Content-Type: application/json" \
-        -d "$command" 2>&1)
+    # Send command to MCP server via WebSocket
+    response=$(echo "$command" | websocat "$RAILWAY_URL" 2>&1 | head -1)
 
     if [ -z "$response" ]; then
         echo "Response: (no response received - server may not be running)"
@@ -49,16 +50,15 @@ test_tool() {
 
 # Check if server is reachable
 echo "Checking server connectivity..."
-http_code=$(curl -s -o /dev/null -w "%{http_code}" "$RAILWAY_URL" 2>&1)
-echo "HTTP Status: $http_code"
-echo ""
-
-if [ "$http_code" = "000" ] || [ "$http_code" = "003" ]; then
+if timeout 5 websocat "$RAILWAY_URL" </dev/null 2>&1 | grep -q "error\|refused"; then
     echo "WARNING: Server is not reachable at $RAILWAY_URL"
     echo "Make sure:"
     echo "  1. The Railway app is deployed and running"
-    echo "  2. The URL is correct"
+    echo "  2. The WebSocket server is properly configured"
     echo "  3. You have internet connectivity"
+    echo ""
+else
+    echo "Server is reachable"
     echo ""
 fi
 
@@ -93,7 +93,3 @@ test_tool "Delete User (ID: 1)" \
 echo "================================================"
 echo "All tests completed!"
 echo "================================================"
-echo ""
-echo "Note: If tests failed with connection errors,"
-echo "the Railway server may not be configured for HTTP requests."
-echo "The MCP server currently uses stdio mode (stdin/stdout)."
