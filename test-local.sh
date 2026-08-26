@@ -10,11 +10,12 @@ echo "MCP Users Server - Local Test"
 echo "================================================"
 echo ""
 
-# Find JAR file
-JAR_FILE=$(find target -name "mcp-users-server-*.jar" -type f | head -1)
+# Find JAR file (prefer main target dir, not temp archives)
+JAR_FILE=$(find target -maxdepth 1 -name "mcp-users-server-*.jar" -type f | head -1)
 
 if [ -z "$JAR_FILE" ]; then
-    echo "ERROR: JAR file not found. Run: mvn clean package -DskipTests"
+    echo "ERROR: JAR file not found in target directory."
+    echo "Run: mvn clean package -DskipTests"
     exit 1
 fi
 
