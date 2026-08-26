@@ -34,7 +34,7 @@ public class McpWebSocketServer extends WebSocketServer {
     public void onStart() {
         logger.info("MCP WebSocket Server started on port {}", this.getPort());
         logger.info("WebSocket: ws://localhost:{}", this.getPort());
-        logger.info("Health Check: http://localhost:{}/health", this.getPort());
+        logger.info("Health Check: http://localhost:{}/health", this.getPort() + 1);
     }
 
     @Override
