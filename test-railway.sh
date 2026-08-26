@@ -62,13 +62,36 @@ install_websocat() {
             curl -s https://raw.githubusercontent.com/transcode-open/apt-cyg/master/apt-cyg > apt-cyg
             chmod +x apt-cyg
 
-            # Try to move to standard locations
-            if mkdir -p /usr/local/bin 2>/dev/null && mv apt-cyg /usr/local/bin/; then
+            # Try to move/install to various locations
+            APT_CYG_INSTALLED=0
+
+            # Try /usr/local/bin
+            if mkdir -p /usr/local/bin 2>/dev/null && sudo mv apt-cyg /usr/local/bin/ 2>/dev/null; then
                 echo "apt-cyg installed to /usr/local/bin"
-            elif mv apt-cyg /usr/bin/; then
+                APT_CYG_INSTALLED=1
+            fi
+
+            # Try /usr/bin with sudo
+            if [ $APT_CYG_INSTALLED -eq 0 ] && sudo mv apt-cyg /usr/bin/ 2>/dev/null; then
                 echo "apt-cyg installed to /usr/bin"
-            else
-                echo "ERROR: Could not install apt-cyg"
+                APT_CYG_INSTALLED=1
+            fi
+
+            # Try user directory ~/.local/bin
+            if [ $APT_CYG_INSTALLED -eq 0 ]; then
+                mkdir -p ~/.local/bin
+                if mv apt-cyg ~/.local/bin/; then
+                    echo "apt-cyg installed to ~/.local/bin"
+                    # Add to PATH for this session
+                    if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
+                        export PATH="$HOME/.local/bin:$PATH"
+                    fi
+                    APT_CYG_INSTALLED=1
+                fi
+            fi
+
+            if [ $APT_CYG_INSTALLED -eq 0 ]; then
+                echo "ERROR: Could not install apt-cyg to any location"
                 return 1
             fi
 
