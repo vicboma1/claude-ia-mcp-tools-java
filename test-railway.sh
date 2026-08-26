@@ -12,15 +12,65 @@ echo ""
 echo "Target: $RAILWAY_URL"
 echo ""
 
+# Function to install websocat
+install_websocat() {
+    echo "Installing websocat..."
+    echo ""
+
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS
+        if command -v brew &> /dev/null; then
+            echo "Detected macOS with Homebrew"
+            brew install websocat
+            return $?
+        fi
+    elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        # Linux
+        if command -v apt-get &> /dev/null; then
+            echo "Detected Debian/Ubuntu"
+            sudo apt-get update
+            sudo apt-get install -y websocat
+            return $?
+        fi
+    elif [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]]; then
+        # Windows (Git Bash / WSL)
+        if command -v choco &> /dev/null; then
+            echo "Detected Windows with Chocolatey"
+            choco install websocat
+            return $?
+        fi
+    fi
+
+    # Fallback: Try cargo if available
+    if command -v cargo &> /dev/null; then
+        echo "Installing via cargo (requires Rust)..."
+        cargo install websocat
+        return $?
+    fi
+
+    echo "ERROR: Could not automatically install websocat"
+    echo ""
+    echo "Manual installation:"
+    echo "  macOS:       brew install websocat"
+    echo "  Ubuntu/Deb:  sudo apt-get install websocat"
+    echo "  Windows:     choco install websocat"
+    echo "  Universal:   cargo install websocat (requires Rust)"
+    echo "  Manual:      https://github.com/vi/websocat/releases"
+    return 1
+}
+
 # Check if websocat is installed
 if ! command -v websocat &> /dev/null; then
-    echo "ERROR: websocat is not installed"
+    echo "websocat not found. Attempting to install..."
     echo ""
-    echo "Install websocat:"
-    echo "  macOS:  brew install websocat"
-    echo "  Linux:  cargo install websocat (requires Rust)"
-    echo "  Manual: https://github.com/vi/websocat/releases"
-    exit 1
+
+    if ! install_websocat; then
+        exit 1
+    fi
+
+    echo ""
+    echo "websocat installed successfully!"
+    echo ""
 fi
 
 # Function to send command via WebSocket
