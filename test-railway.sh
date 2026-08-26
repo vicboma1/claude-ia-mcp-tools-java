@@ -25,11 +25,27 @@ install_websocat() {
             return $?
         fi
     elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        # Linux
-        if command -v apt-get &> /dev/null; then
-            echo "Detected Debian/Ubuntu"
+        # Linux - detect distribution
+        if command -v pacman &> /dev/null; then
+            echo "Detected Arch Linux (pacman)"
+            sudo pacman -Sy websocat
+            return $?
+        elif command -v apt-get &> /dev/null; then
+            echo "Detected Debian/Ubuntu (apt-get)"
             sudo apt-get update
             sudo apt-get install -y websocat
+            return $?
+        elif command -v yum &> /dev/null; then
+            echo "Detected RHEL/CentOS/Fedora (yum)"
+            sudo yum install -y websocat
+            return $?
+        elif command -v dnf &> /dev/null; then
+            echo "Detected Fedora (dnf)"
+            sudo dnf install -y websocat
+            return $?
+        elif command -v zypper &> /dev/null; then
+            echo "Detected openSUSE (zypper)"
+            sudo zypper install -y websocat
             return $?
         fi
     elif [[ "$OSTYPE" == "cygwin"* ]]; then
@@ -74,8 +90,18 @@ install_websocat() {
     echo "macOS:"
     echo "  brew install websocat"
     echo ""
+    echo "Arch Linux:"
+    echo "  sudo pacman -Sy websocat"
+    echo ""
     echo "Ubuntu/Debian/Linux:"
-    echo "  sudo apt-get install websocat"
+    echo "  sudo apt-get update && sudo apt-get install -y websocat"
+    echo ""
+    echo "Fedora/RHEL/CentOS:"
+    echo "  sudo dnf install -y websocat   (Fedora 22+)"
+    echo "  sudo yum install -y websocat   (CentOS/RHEL 7)"
+    echo ""
+    echo "openSUSE:"
+    echo "  sudo zypper install -y websocat"
     echo ""
     echo "Cygwin:"
     echo "  curl -s https://raw.githubusercontent.com/transcode-open/apt-cyg/master/apt-cyg > apt-cyg"
