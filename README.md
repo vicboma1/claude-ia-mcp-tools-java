@@ -133,6 +133,11 @@ bash test-local.sh
 bash test-railway.sh
 ```
 
+**Automatic post-deploy validation:**
+- GitHub Actions automatically runs `validate-deployment.sh` and `test-railway.sh` after each Railway deployment
+- View results in: GitHub → Actions → "Post-Deploy Validation"
+- See [POST_DEPLOY_VALIDATION.md](POST_DEPLOY_VALIDATION.md) for setup details
+
 ### Manual Testing
 
 ```bash

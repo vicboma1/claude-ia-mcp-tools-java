@@ -69,6 +69,21 @@ echo '{"jsonrpc":"2.0","method":"initialize","id":1}' | \
 
 ### Validation
 
+#### Option 1: Automatic Post-Deploy Validation (Recommended)
+
+GitHub Actions automatically validates after each deployment:
+
+1. **Trigger**: After successful Railway deployment
+2. **What it does**:
+   - Waits 60 seconds for server to start
+   - Runs `validate-deployment.sh` (checks infrastructure)
+   - Runs `test-railway.sh` (tests all MCP commands)
+3. **View results**: GitHub → Actions → "Post-Deploy Validation"
+
+**Workflow file:** `.github/workflows/post-deploy-validation.yml`
+
+#### Option 2: Manual Validation
+
 Run the validation script:
 ```bash
 bash validate-deployment.sh https://claude-ia-mcp-tools-java-staging.up.railway.app
@@ -78,6 +93,28 @@ This checks:
 - HTTP connectivity
 - WebSocket upgrade capability
 - Server responsiveness
+
+Then test full MCP functionality:
+```bash
+bash test-railway.sh
+```
+
+This validates:
+- initialize command
+- tools/list command
+- get_user, list_users, create_user, update_user, delete_user commands
+- JSON-RPC protocol compliance
+
+#### Option 3: View Deployment Logs
+
+```bash
+railway logs
+```
+
+Look for:
+- `MCP WebSocket Server started on port X`
+- `HTTP Health Check Server listening on port Y`
+- No ERROR messages
 
 ### Troubleshooting
 
@@ -101,6 +138,32 @@ This checks:
 - WebSocket connections are persistent and efficient for MCP
 - HTTP health checks are lightweight (sent every ~10 seconds)
 - Multiple concurrent WebSocket connections supported
+
+### Customizing Post-Deploy Validation
+
+**Edit the workflow** (`.github/workflows/post-deploy-validation.yml`):
+
+Change Railway URL:
+```yaml
+- name: Run deployment validation
+  run: |
+    bash validate-deployment.sh https://YOUR-URL.up.railway.app
+```
+
+Adjust startup wait time:
+```yaml
+- name: Wait for Railway deployment (60s)
+  run: sleep 120  # Change from 60 to 120 seconds
+```
+
+Add custom validations:
+```yaml
+- name: Custom health check
+  run: |
+    curl -s https://YOUR-URL.up.railway.app/health | jq .
+```
+
+For more details, see [POST_DEPLOY_VALIDATION.md](POST_DEPLOY_VALIDATION.md).
 
 ### Future Improvements
 
