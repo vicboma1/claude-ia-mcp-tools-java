@@ -12,6 +12,60 @@ echo ""
 echo "Target: $RAILWAY_URL"
 echo ""
 
+# Function to download precompiled binary
+download_precompiled_websocat() {
+    echo "Downloading precompiled websocat binary..."
+
+    local TEMP_DIR=$(mktemp -d)
+    trap "rm -rf $TEMP_DIR" EXIT
+
+    cd "$TEMP_DIR" || return 1
+
+    # Detect architecture and platform
+    local ARCH=$(uname -m)
+    local OS=$(uname -s)
+
+    # Determine download URL
+    local DOWNLOAD_URL
+    case "$OS-$ARCH" in
+        Linux-x86_64)
+            DOWNLOAD_URL="https://github.com/vi/websocat/releases/download/v1.12.0/websocat.x86_64-unknown-linux-musl"
+            ;;
+        Darwin-x86_64)
+            DOWNLOAD_URL="https://github.com/vi/websocat/releases/download/v1.12.0/websocat.x86_64-apple-darwin"
+            ;;
+        Darwin-arm64)
+            DOWNLOAD_URL="https://github.com/vi/websocat/releases/download/v1.12.0/websocat.aarch64-apple-darwin"
+            ;;
+        MINGW*-x86_64|MSYS*-x86_64)
+            DOWNLOAD_URL="https://github.com/vi/websocat/releases/download/v1.12.0/websocat.x86_64-pc-windows-gnu.exe"
+            ;;
+        *)
+            echo "Unsupported platform: $OS-$ARCH"
+            return 1
+            ;;
+    esac
+
+    echo "Downloading from: $DOWNLOAD_URL"
+    if ! curl -sL -o websocat "$DOWNLOAD_URL"; then
+        echo "Failed to download websocat"
+        return 1
+    fi
+
+    chmod +x websocat 2>/dev/null
+
+    # Install to standard location
+    if mkdir -p ~/.local/bin && mv websocat ~/.local/bin/; then
+        echo "websocat installed to ~/.local/bin"
+        if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
+            export PATH="$HOME/.local/bin:$PATH"
+        fi
+        return 0
+    fi
+
+    return 1
+}
+
 # Function to install websocat
 install_websocat() {
     echo "Installing websocat..."
@@ -48,60 +102,9 @@ install_websocat() {
             sudo zypper install -y websocat
             return $?
         fi
-    elif [[ "$OSTYPE" == "cygwin"* ]]; then
-        # Cygwin
-        echo "Detected Cygwin"
-
-        # Try apt-cyg if available
-        if command -v apt-cyg &> /dev/null; then
-            echo "Installing via apt-cyg..."
-            apt-cyg install websocat
-            return $?
-        else
-            echo "apt-cyg not found. Installing apt-cyg first..."
-            curl -s https://raw.githubusercontent.com/transcode-open/apt-cyg/master/apt-cyg > apt-cyg
-            chmod +x apt-cyg
-
-            # Try to move/install to various locations
-            APT_CYG_INSTALLED=0
-
-            # Try /usr/local/bin
-            if mkdir -p /usr/local/bin 2>/dev/null && sudo mv apt-cyg /usr/local/bin/ 2>/dev/null; then
-                echo "apt-cyg installed to /usr/local/bin"
-                APT_CYG_INSTALLED=1
-            fi
-
-            # Try /usr/bin with sudo
-            if [ $APT_CYG_INSTALLED -eq 0 ] && sudo mv apt-cyg /usr/bin/ 2>/dev/null; then
-                echo "apt-cyg installed to /usr/bin"
-                APT_CYG_INSTALLED=1
-            fi
-
-            # Try user directory ~/.local/bin
-            if [ $APT_CYG_INSTALLED -eq 0 ]; then
-                mkdir -p ~/.local/bin
-                if mv apt-cyg ~/.local/bin/; then
-                    echo "apt-cyg installed to ~/.local/bin"
-                    # Add to PATH for this session
-                    if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
-                        export PATH="$HOME/.local/bin:$PATH"
-                    fi
-                    APT_CYG_INSTALLED=1
-                fi
-            fi
-
-            if [ $APT_CYG_INSTALLED -eq 0 ]; then
-                echo "ERROR: Could not install apt-cyg to any location"
-                return 1
-            fi
-
-            # Install websocat via apt-cyg
-            apt-cyg install websocat
-            return $?
-        fi
-    elif [[ "$OSTYPE" == "msys" ]]; then
-        # Git Bash / Windows
-        echo "Detected Git Bash / Windows"
+    elif [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin"* ]]; then
+        # Windows (Git Bash / Cygwin)
+        echo "Detected Windows environment"
         if command -v choco &> /dev/null; then
             echo "Chocolatey found"
             choco install websocat
@@ -116,7 +119,13 @@ install_websocat() {
         return $?
     fi
 
-    # Fallback 2: Clone and compile from source
+    # Fallback 2: Download precompiled binary
+    echo "Attempting to download precompiled binary..."
+    if download_precompiled_websocat; then
+        return 0
+    fi
+
+    # Fallback 3: Clone and compile from source
     if command -v git &> /dev/null && command -v cargo &> /dev/null; then
         echo "Cloning websocat from GitHub and compiling from source..."
         echo ""
@@ -132,26 +141,20 @@ install_websocat() {
         echo "Compiling websocat (this may take a few minutes)..."
         cargo build --release
 
-        if [ -f target/release/websocat ]; then
+        if [ -f target/release/websocat ] || [ -f target/release/websocat.exe ]; then
             echo "Installation successful!"
 
+            local BINARY=$([ -f target/release/websocat ] && echo target/release/websocat || echo target/release/websocat.exe)
+
             # Try to install to standard locations
-            if sudo mkdir -p /usr/local/bin && sudo mv target/release/websocat /usr/local/bin/; then
-                echo "websocat installed to /usr/local/bin"
-                return 0
-            elif sudo mv target/release/websocat /usr/bin/; then
-                echo "websocat installed to /usr/bin"
-                return 0
-            elif mkdir -p ~/.local/bin && mv target/release/websocat ~/.local/bin/; then
+            if mkdir -p ~/.local/bin && mv "$BINARY" ~/.local/bin/; then
                 echo "websocat installed to ~/.local/bin"
-                # Add to PATH if not already there
                 if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
                     export PATH="$HOME/.local/bin:$PATH"
-                    echo "Added ~/.local/bin to PATH"
                 fi
                 return 0
             else
-                echo "ERROR: Could not move websocat to any standard location"
+                echo "ERROR: Could not move websocat to ~/.local/bin"
                 return 1
             fi
         fi
