@@ -1,78 +1,97 @@
 # MCP Users Server (Java)
 
-MCP server for user management with clean separation of concerns: API client layer, business logic, and MCP tool handlers.
+MCP (Model Context Protocol) server for user management with clean separation of concerns: API client layer, business logic, and MCP protocol handlers. Supports both local (stdio) and remote (WebSocket) deployments.
 
 ## Architecture
+
+### Layered Design
+
+```
+┌─────────────────────────────────────┐
+│  Transport Layer                    │
+├─────────────────┬───────────────────┤
+│ McpServer       │ McpWebSocketServer│
+│ (stdio)         │ (WebSocket)       │
+└────────┬────────┴────────┬──────────┘
+         │                 │
+┌────────▼─────────────────▼──────────┐
+│  MCP Protocol Handler               │
+│  ToolRegistry, request validation   │
+└────────┬──────────────────────────┬─┘
+         │                          │
+┌────────▼──────────────────────────▼┐
+│  Business Logic Layer               │
+│  UserService (reusable)             │
+└────────┬──────────────────────────┬─┘
+         │                          │
+┌────────▼──────────────────────────▼┐
+│  API Client Layer                   │
+│  ApiClient (HTTP, no logic)         │
+└─────────────────────────────────────┘
+```
+
+### Code Structure
 
 ```
 src/main/java/com/example/
 ├── api/
-│   └── ApiClient.java        // HTTP client (no business logic)
+│   └── ApiClient.java           // HTTP client (no business logic)
 ├── business/
-│   └── UserService.java      // Business layer (reusable)
+│   └── UserService.java         // Validation, normalization, business rules
 ├── mcp/
-│   ├── McpServer.java        // MCP protocol handler
-│   └── ToolRegistry.java     // Tool definitions
+│   ├── McpServer.java           // JSON-RPC protocol handler (stdio)
+│   ├── McpWebSocketServer.java  // WebSocket server for remote (Railway)
+│   └── ToolRegistry.java        // Tool definitions and schemas
 ```
 
 ## Tools Exposed
 
-1. `get_user` - Get one user by ID
-2. `list_users` - List all users
-3. `create_user` - Create a new user
-4. `update_user` - Update user name/email
-5. `delete_user` - Delete a user
+1. **get_user** - Get one user by ID (requires: user_id)
+2. **list_users** - List all users (no parameters)
+3. **create_user** - Create a new user (requires: name, email)
+4. **update_user** - Update user name/email (requires: user_id; optional: name, email)
+5. **delete_user** - Delete a user (requires: user_id)
 
 ## Requirements
 
 - Java 11+
 - Maven 3.6+
 
-## Setup
+## Setup & Build
 
 ```bash
-mvn clean install
+# Install dependencies and build
+mvn clean package -DskipTests
+
+# Run all tests
+mvn test
+
+# With coverage report
+mvn test jacoco:report
 ```
 
-## Run the MCP Server
+## Deployment Modes
+
+### Local Deployment (stdio)
+
+Use this for Claude Desktop or local testing:
+
+```bash
+java -cp target/mcp-users-server-*.jar com.example.mcp.McpServer
+```
+
+Or with Maven:
 
 ```bash
 mvn exec:java -Dexec.mainClass="com.example.mcp.McpServer"
 ```
 
-Or after building:
-
-```bash
-java -cp target/mcp-users-server-1.0.0.jar com.example.mcp.McpServer
-```
-
-Or native:
-
-```java
-java -jar target/mcp-users-server-*.jar
-```
-
-## Run Tests
-
-```bash
-mvn test
-```
-
-Or after run
-
-```bash
-bash test-local.sh
-```
-
-
-## MCP Configuration
-
-### Via stdio (Claude Desktop)
+Claude Desktop configuration:
 
 ```json
 {
   "mcpServers": {
-    "example-users": {
+    "users": {
       "command": "java",
       "args": ["-cp", "path/to/mcp-users-server-1.0.0.jar", "com.example.mcp.McpServer"]
     }
@@ -80,29 +99,61 @@ bash test-local.sh
 }
 ```
 
-### Test via command line
+### Remote Deployment (WebSocket)
+
+Use this for Railway or other cloud platforms:
 
 ```bash
-echo '{"jsonrpc":"2.0","method":"initialize","id":1}' | java -cp target/mcp-users-server-1.0.0.jar com.example.mcp.McpServer
-echo '{"jsonrpc":"2.0","method":"tools/list","id":2}' | java -cp target/mcp-users-server-1.0.0.jar com.example.mcp.McpServer
+java -jar target/mcp-users-server-*.jar
 ```
 
-## Implementation Notes
+Server will:
+- Listen on WebSocket at port (default: 8080)
+- Listen on HTTP health checks at port+1 (default: 8081)
+- Log startup information with endpoint details
 
-- **ApiClient**: HTTP-only, no business decisions. Uses OkHttp for resilient connections with timeouts.
-- **UserService**: Business logic layer. Validates inputs, normalizes data, handles edge cases. Reusable by tests, batch jobs, REST endpoints, etc.
-- **McpServer**: Thin layer that validates MCP inputs and delegates to UserService.
+For Railway deployment, see [RAILWAY.md](RAILWAY.md) for full configuration.
 
-This architecture ensures the business logic is completely decoupled from the MCP transport layer, making it testable and reusable.
+## Testing
+
+### Local Tests
+
+```bash
+# Run unit tests
+mvn test
+
+# Run integration tests with test script
+bash test-local.sh
+```
+
+### Remote Tests (Railway)
+
+```bash
+# Requires websocat: brew install websocat
+bash test-railway.sh
+```
+
+### Manual Testing
+
+```bash
+# stdio
+echo '{"jsonrpc":"2.0","method":"initialize","id":1}' | \
+  java -cp target/mcp-users-server-*.jar com.example.mcp.McpServer
+
+# WebSocket
+echo '{"jsonrpc":"2.0","method":"initialize","id":1}' | \
+  websocat ws://localhost:8080
+```
 
 ## Test Coverage
 
-- 5+ test cases for each tool
-- Edge cases: empty strings, invalid emails, zero/negative IDs
-- Mock API client for unit testing
-- Both service and server layer tests
+- 139 test cases total
+- 70+ test cases for business logic
+- 40+ corner cases (empty strings, invalid emails, boundary IDs)
+- Mocked API client for unit tests
+- Coverage: statement, branch, and method coverage tracked
 
-Run with coverage:
+Run coverage report:
 
 ```bash
 mvn test jacoco:report
@@ -111,8 +162,25 @@ open target/site/jacoco/index.html
 
 ## Dependencies
 
-- **OkHttp 4.11.0** - HTTP client
-- **Gson 2.10.1** - JSON serialization
-- **SLF4J + Logback** - Logging
-- **JUnit 5** - Testing
-- **Mockito 5.3.1** - Mocking
+- **OkHttp 4.11.0** - Resilient HTTP client with timeouts
+- **Gson 2.10.1** - JSON serialization/deserialization
+- **Java-WebSocket 1.5.4** - WebSocket server for remote deployment
+- **SLF4J 2.0.7 + Logback 1.4.8** - Structured logging to stderr
+- **JUnit 5.10.0** - Testing framework
+- **Mockito 5.3.1** - Mocking for unit tests
+
+## CI/CD Pipeline
+
+GitHub Actions workflows for:
+- **CI** (ci.yml) - Build, test, coverage reporting
+- **Lint** (lint.yml) - Code quality and security scanning
+- **Release** (release.yml) - Automated releases on git tags
+- **Deploy** (deploy.yml) - Automatic deployment to Railway
+- **Auto-merge** (auto-merge-dependabot.yml) - Dependency updates
+
+## Documentation
+
+- [SETUP.md](SETUP.md) - Local development setup
+- [TESTS.md](TESTS.md) - Detailed test documentation
+- [CI_CD.md](CI_CD.md) - CI/CD pipeline guide
+- [RAILWAY.md](RAILWAY.md) - Railway deployment guide
