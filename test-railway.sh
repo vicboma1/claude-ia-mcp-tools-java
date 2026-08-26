@@ -75,11 +75,35 @@ install_websocat() {
         fi
     fi
 
-    # Fallback: Try cargo if available (works on all platforms)
+    # Fallback 1: Try cargo if available (works on all platforms)
     if command -v cargo &> /dev/null; then
         echo "Installing via cargo (Rust)..."
         cargo install websocat
         return $?
+    fi
+
+    # Fallback 2: Clone and compile from source
+    if command -v git &> /dev/null && command -v cargo &> /dev/null; then
+        echo "Cloning websocat from GitHub and compiling from source..."
+        echo ""
+
+        TEMP_DIR=$(mktemp -d)
+        trap "rm -rf $TEMP_DIR" EXIT
+
+        cd "$TEMP_DIR" || return 1
+
+        git clone https://github.com/vi/websocat.git --depth 1
+        cd websocat || return 1
+
+        echo "Compiling websocat (this may take a few minutes)..."
+        cargo build --release
+
+        if [ -f target/release/websocat ]; then
+            echo "Installation successful!"
+            sudo mv target/release/websocat /usr/local/bin/ || cp target/release/websocat ~/.local/bin/
+            return 0
+        fi
+        return 1
     fi
 
     echo ""
