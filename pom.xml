@@ -114,7 +114,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>com.example.mcp.McpServer</mainClass>
+                            <mainClass>com.example.mcp.McpWebSocketServer</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
@@ -132,7 +132,7 @@
                         <configuration>
                             <archive>
                                 <manifest>
-                                    <mainClass>com.example.mcp.McpServer</mainClass>
+                                    <mainClass>com.example.mcp.McpWebSocketServer</mainClass>
                                 </manifest>
                             </archive>
                             <descriptorRefs>
