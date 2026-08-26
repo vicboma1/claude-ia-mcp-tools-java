@@ -100,14 +100,39 @@ install_websocat() {
 
         if [ -f target/release/websocat ]; then
             echo "Installation successful!"
-            sudo mv target/release/websocat /usr/local/bin/ || cp target/release/websocat ~/.local/bin/
-            return 0
+
+            # Try to install to standard locations
+            if sudo mkdir -p /usr/local/bin && sudo mv target/release/websocat /usr/local/bin/; then
+                echo "websocat installed to /usr/local/bin"
+                return 0
+            elif sudo mv target/release/websocat /usr/bin/; then
+                echo "websocat installed to /usr/bin"
+                return 0
+            elif mkdir -p ~/.local/bin && mv target/release/websocat ~/.local/bin/; then
+                echo "websocat installed to ~/.local/bin"
+                # Add to PATH if not already there
+                if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
+                    export PATH="$HOME/.local/bin:$PATH"
+                    echo "Added ~/.local/bin to PATH"
+                fi
+                return 0
+            else
+                echo "ERROR: Could not move websocat to any standard location"
+                return 1
+            fi
         fi
         return 1
     fi
 
     echo ""
     echo "ERROR: Could not automatically install websocat"
+    echo ""
+    echo "websocat installation locations tried:"
+    echo "  1. /usr/local/bin (standard location)"
+    echo "  2. /usr/bin (fallback)"
+    echo "  3. ~/.local/bin (user directory)"
+    echo "  4. Cargo (compile from Rust source)"
+    echo "  5. Clone from GitHub and compile"
     echo ""
     echo "Manual installation options:"
     echo ""
