@@ -32,30 +32,65 @@ install_websocat() {
             sudo apt-get install -y websocat
             return $?
         fi
-    elif [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]]; then
-        # Windows (Git Bash / WSL)
+    elif [[ "$OSTYPE" == "cygwin"* ]]; then
+        # Cygwin
+        echo "Detected Cygwin"
+
+        # Try apt-cyg if available
+        if command -v apt-cyg &> /dev/null; then
+            echo "Installing via apt-cyg..."
+            apt-cyg install websocat
+            return $?
+        else
+            echo "apt-cyg not found. Installing apt-cyg first..."
+            curl -s https://raw.githubusercontent.com/transcode-open/apt-cyg/master/apt-cyg > apt-cyg
+            chmod +x apt-cyg
+            mv apt-cyg /usr/local/bin/
+            apt-cyg install websocat
+            return $?
+        fi
+    elif [[ "$OSTYPE" == "msys" ]]; then
+        # Git Bash / Windows
+        echo "Detected Git Bash / Windows"
         if command -v choco &> /dev/null; then
-            echo "Detected Windows with Chocolatey"
+            echo "Chocolatey found"
             choco install websocat
             return $?
         fi
     fi
 
-    # Fallback: Try cargo if available
+    # Fallback: Try cargo if available (works on all platforms)
     if command -v cargo &> /dev/null; then
-        echo "Installing via cargo (requires Rust)..."
+        echo "Installing via cargo (Rust)..."
         cargo install websocat
         return $?
     fi
 
+    echo ""
     echo "ERROR: Could not automatically install websocat"
     echo ""
-    echo "Manual installation:"
-    echo "  macOS:       brew install websocat"
-    echo "  Ubuntu/Deb:  sudo apt-get install websocat"
-    echo "  Windows:     choco install websocat"
-    echo "  Universal:   cargo install websocat (requires Rust)"
-    echo "  Manual:      https://github.com/vi/websocat/releases"
+    echo "Manual installation options:"
+    echo ""
+    echo "macOS:"
+    echo "  brew install websocat"
+    echo ""
+    echo "Ubuntu/Debian/Linux:"
+    echo "  sudo apt-get install websocat"
+    echo ""
+    echo "Cygwin:"
+    echo "  curl -s https://raw.githubusercontent.com/transcode-open/apt-cyg/master/apt-cyg > apt-cyg"
+    echo "  chmod +x apt-cyg"
+    echo "  sudo mv apt-cyg /usr/local/bin/"
+    echo "  apt-cyg install websocat"
+    echo ""
+    echo "Windows (Git Bash):"
+    echo "  choco install websocat"
+    echo ""
+    echo "Universal (requires Rust):"
+    echo "  cargo install websocat"
+    echo ""
+    echo "Manual download:"
+    echo "  https://github.com/vi/websocat/releases"
     return 1
 }
 
