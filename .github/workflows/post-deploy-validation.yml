@@ -19,9 +19,7 @@ jobs:
         run: sleep 60
 
       - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y websocat jq
+        run: bash install-ci-deps.sh
 
       - name: Run deployment validation
         run: |
